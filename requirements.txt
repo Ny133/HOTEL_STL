@@ -1,1 +1,11 @@
 streamlit
+pandas
+requests
+folium
+streamlit-folium
+haversine
+plotly
+numpy
+seaborn
+matplotlib
+statsmodels
