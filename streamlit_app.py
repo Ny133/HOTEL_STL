@@ -1,10 +1,3 @@
-네, 알겠습니다. 제공하신 코드를 **Streamlit** 애플리케이션으로 실행할 수 있는 단일 Python 파일 형태(\*.py)로 정리했습니다.
-
-이 코드를 `hotel_dashboard.py`와 같은 이름으로 저장하시고, 터미널에서 `streamlit run hotel_dashboard.py` 명령어를 사용하여 실행하시면 됩니다.
-
------
-
-```python
 import streamlit as st
 import pandas as pd
 import requests
