@@ -58,12 +58,6 @@ def get_hotels(api_key, area_code):
     return df
 
 hotels_df = get_hotels(api_key, area_code)
-# 호텔 선택
-selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-
-# tourist_count 계산 후 hotel_info 선택
-hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
 # ------------------ 관광지 API ------------------
 @st.cache_data(ttl=3600)
@@ -106,18 +100,18 @@ def calculate_tourist_counts(hotels_df):
     counts.sort(key=lambda x: x[0])
     return [c[1] for c in counts]
 
+# ------------------ tourist_count 계산 ------------------
 hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
+
+# ------------------ 호텔 선택 ------------------
+selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
 # ------------------ 선택 호텔 주변 관광지 데이터 ------------------
 tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
 tourist_df = pd.DataFrame(tourist_list)
-
-if not tourist_df.empty:
-    tourist_df = tourist_df.copy()
-    tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
-    tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
-else:
-    tourist_df = pd.DataFrame(columns=["name","lat","lng","type","type_name","color"])
+tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
+tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
 # ------------------ 호텔 이미지 ------------------
 def get_hotel_images(api_key, content_id):
@@ -153,12 +147,9 @@ if page == "호텔 정보":
 **주변 관광지 수:** {hotel_info['tourist_count']}
 """)
     
-    if not tourist_df.empty:
-        type_counts = tourist_df.groupby("type_name").size().reset_index(name="개수")
-        type_counts = type_counts.rename(columns={"type_name":"관광지 타입"})
-        st.table(type_counts)
-    else:
-        st.write("주변 관광지 데이터가 없습니다.")
+    type_counts = tourist_df.groupby("type_name").size().reset_index(name="개수")
+    type_counts = type_counts.rename(columns={"type_name":"관광지 타입"})
+    st.table(type_counts)
     
     st.markdown("### 📷 호텔 이미지")
     images = get_hotel_images(api_key, hotel_info.get("contentid", ""))
@@ -168,17 +159,14 @@ if page == "호텔 정보":
         st.write("이미지 없음")
         
     st.markdown("### 주변 가장 가까운 관광지 Top 5")
-    if not tourist_df.empty:
-        tourist_df_filtered = tourist_df[tourist_df["type"] != 80].copy()
-        tourist_df_filtered.loc[:, "dist"] = np.sqrt(
-            (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
-            (tourist_df_filtered["lng"] - hotel_info["lng"])**2
-        )
-        top5 = tourist_df_filtered.sort_values("dist").head(5)
-        for _, row in top5.iterrows():
-            st.write(f"- **{row['name']}** ({row['type_name']})")
-    else:
-        st.write("주변 관광지 데이터가 없습니다.")
+    tourist_df_filtered = tourist_df[tourist_df["type"] != 80]
+    tourist_df_filtered["dist"] = np.sqrt(
+        (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
+        (tourist_df_filtered["lng"] - hotel_info["lng"])**2
+    )
+    top5 = tourist_df_filtered.sort_values("dist").head(5)
+    for _, row in top5.iterrows():
+        st.write(f"- **{row['name']}** ({row['type_name']})")
     
     booking_url = f"https://www.booking.com/searchresults.ko.html?ss={hotel_info['name'].replace(' ','+')}"
     st.markdown(f"""
@@ -196,13 +184,10 @@ if page == "호텔 정보":
 
 elif page == "관광지 보기":
     st.subheader(f"📍 {selected_region} 호텔 주변 관광지 보기")
-    if not tourist_df.empty:
-        category_list = ["선택 안 함"] + tourist_df["type_name"].unique().tolist()
-    else:
-        category_list = ["선택 안 함"]
+    category_list = ["선택 안 함"] + tourist_df["type_name"].unique().tolist()
     selected_category = st.selectbox("관광지 분류 선택", category_list)
     selected_spot = None
-    if selected_category != "선택 안 함" and not tourist_df.empty:
+    if selected_category != "선택 안 함":
         filtered = tourist_df[tourist_df["type_name"] == selected_category]
         spot_list = ["선택 안 함"] + filtered["name"].tolist()
         selected_name = st.selectbox(f"{selected_category} 내 관광지 선택", spot_list)
@@ -215,21 +200,20 @@ elif page == "관광지 보기":
         folium.Marker(location=[hotel_info['lat'], hotel_info['lng']],
                       popup=f"{hotel_info['name']}",
                       icon=folium.Icon(color='red', icon='hotel', prefix='fa')).add_to(m)
-        if not tourist_df.empty:
-            for _, row in tourist_df.iterrows():
-                highlight = selected_spot is not None and row["name"] == selected_spot["name"]
-                icon_name = TYPE_ICONS.get(row["type"], "info-sign")
-                if highlight:
-                    icon = BeautifyIcon(icon="star", icon_shape="marker",
-                                        border_color="yellow", text_color="white", background_color="yellow",
-                                        prefix="fa", icon_size=[30,30])
-                else:
-                    icon = BeautifyIcon(icon=icon_name, icon_shape="circle",
-                                        border_color=row["color"], text_color="white", background_color=row["color"],
-                                        prefix="fa", icon_size=[20,20])
-                folium.Marker(location=[row["lat"], row["lng"]],
-                              popup=f"{row['name']} ({row['type_name']})",
-                              icon=icon).add_to(m)
+        for _, row in tourist_df.iterrows():
+            highlight = selected_spot is not None and row["name"] == selected_spot["name"]
+            icon_name = TYPE_ICONS.get(row["type"], "info-sign")
+            if highlight:
+                icon = BeautifyIcon(icon="star", icon_shape="marker",
+                                    border_color="yellow", text_color="white", background_color="yellow",
+                                    prefix="fa", icon_size=[30,30])
+            else:
+                icon = BeautifyIcon(icon=icon_name, icon_shape="circle",
+                                    border_color=row["color"], text_color="white", background_color=row["color"],
+                                    prefix="fa", icon_size=[20,20])
+            folium.Marker(location=[row["lat"], row["lng"]],
+                          popup=f"{row['name']} ({row['type_name']})",
+                          icon=icon).add_to(m)
         if selected_spot is not None:
             m.location = [selected_spot["lat"], selected_spot["lng"]]
             m.zoom_start = 17
