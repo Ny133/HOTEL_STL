@@ -7,24 +7,6 @@ import numpy as np
 from folium.plugins import BeautifyIcon
 import seaborn as sns
 import matplotlib.pyplot as plt
-api_key = "f0e46463ccf90abd0defd9c79c8568e922e07a835961b1676cdb2065ecc23494"
-
-# 테스트용 API 상태 확인 버튼
-url_test = "http://apis.data.go.kr/B551011/EngService2/searchStay2"
-params_test = {
-    "ServiceKey": api_key,
-    "numOfRows": 1,
-    "pageNo": 1,
-    "MobileOS": "ETC",
-    "MobileApp": "hotel_analysis",
-    "_type": "json",
-    "areaCode": 1  # 서울
-}
-
-if st.button("API 상태 확인"):
-    res = requests.get(url_test, params=params_test)
-    st.write("HTTP status code:", res.status_code)
-    st.write(res.json().get("response", {}).get("header", {}))
 
 # ---------- 한글 폰트 설정 ----------
 plt.rcParams['font.family'] = 'Malgun Gothic'   # Windows
