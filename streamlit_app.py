@@ -58,7 +58,11 @@ def get_hotels(api_key, area_code):
     return df
 
 hotels_df = get_hotels(api_key, area_code)
+# 호텔 선택
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
+
+# tourist_count 계산 후 hotel_info 선택
+hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
 hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
 # ------------------ 관광지 API ------------------
