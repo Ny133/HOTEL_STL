@@ -7,6 +7,7 @@ import numpy as np
 from folium.plugins import BeautifyIcon
 import seaborn as sns
 import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ---------- 한글 폰트 설정 ----------
 plt.rcParams['font.family'] = 'Malgun Gothic'   # Windows
@@ -23,10 +24,8 @@ api_key = "f0e46463ccf90abd0defd9c79c8568e922e07a835961b1676cdb2065ecc23494"
 radius_m = st.slider("관광지 반경 (m)", 500, 2000, 1000, step=100)
 
 # ------------------ 타입 정의 ------------------
-TYPE_COLORS = {
-    75: "#32CD32", 76: "#1E90FF", 77: "#00CED1", 78: "#9370DB",
-    79: "#FFB347", 80: "#A9A9A9", 82: "#FF69B4", 85: "#4682B4"
-}
+TYPE_COLORS = {75: "#32CD32", 76: "#1E90FF", 77: "#00CED1", 78: "#9370DB",
+               79: "#FFB347", 80: "#A9A9A9", 82: "#FF69B4", 85: "#4682B4"}
 
 TYPE_NAMES = {75: "레포츠", 76: "관광지", 77: "교통", 78: "문화시설",
               79: "쇼핑", 80: "다른 숙박지", 82: "음식점", 85: "축제/공연/행사"}
@@ -35,12 +34,7 @@ TYPE_ICONS = {75: "fire", 76: "flag", 77: "plane", 78: "camera",
               79: "shopping-cart", 80: "home", 82: "cutlery", 85: "music"}
 
 # ------------------ 지역 선택 ------------------
-region_map = {
-    "서울": 1,
-    "부산": 6,
-    "제주": 39
-}
-
+region_map = {"서울": 1, "부산": 6, "제주": 39}
 selected_region = st.sidebar.selectbox("지역 선택", list(region_map.keys()))
 area_code = region_map[selected_region]
 
@@ -63,7 +57,11 @@ def get_hotels(api_key, area_code):
     df["rating"] = np.random.uniform(3.0,5.0, size=len(df)).round(1)
     return df
 
-# ------------------ 관광지 리스트 API ------------------
+hotels_df = get_hotels(api_key, area_code)
+selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
+
+# ------------------ 관광지 API ------------------
 @st.cache_data(ttl=3600)
 def get_tourist_list(api_key, lat, lng, radius_m):
     url = "http://apis.data.go.kr/B551011/EngService2/locationBasedList2"
@@ -86,27 +84,31 @@ def get_tourist_list(api_key, lat, lng, radius_m):
     except:
         return []
 
-# ------------------ 관광지 수 계산 (API 기반) ------------------
+# ------------------ 호텔별 관광지 수 계산 (병렬) ------------------
+def get_tourist_count(lat, lng):
+    return len(get_tourist_list(api_key, lat, lng, radius_m))
+
 @st.cache_data(ttl=3600)
-def get_tourist_count(lat, lng, radius_m):
-    tourist_list = get_tourist_list(api_key, lat, lng, radius_m)
-    return len(tourist_list)
+def calculate_tourist_counts(hotels_df):
+    counts = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_hotel = {executor.submit(get_tourist_count, row["lat"], row["lng"]): idx for idx, row in hotels_df.iterrows()}
+        for future in as_completed(future_to_hotel):
+            idx = future_to_hotel[future]
+            try:
+                counts.append((idx, future.result()))
+            except:
+                counts.append((idx, 0))
+    counts.sort(key=lambda x: x[0])
+    return [c[1] for c in counts]
 
-# ------------------ 호텔 데이터 가져오기 + 관광지 수 계산 ------------------
-hotels_df = get_hotels(api_key, area_code)
-hotels_df["tourist_count"] = hotels_df.apply(
-    lambda x: get_tourist_count(x["lat"], x["lng"], radius_m), axis=1
-)
+hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
 
-selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
-
-# ------------------ 페이지 선택 ------------------
-page = st.radio(
-    "페이지 선택",
-    ["호텔 정보", "관광지 보기", "호텔 비교 분석"],
-    horizontal=True
-)
+# ------------------ 선택 호텔 주변 관광지 데이터 ------------------
+tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
+tourist_df = pd.DataFrame(tourist_list)
+tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
+tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
 # ------------------ 호텔 이미지 ------------------
 def get_hotel_images(api_key, content_id):
@@ -129,11 +131,8 @@ def get_hotel_images(api_key, content_id):
     except:
         return []
 
-# ------------------ 관광지 데이터 ------------------
-tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
-tourist_df = pd.DataFrame(tourist_list)
-tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
-tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
+# ------------------ 페이지 선택 ------------------
+page = st.radio("페이지 선택", ["호텔 정보", "관광지 보기", "호텔 비교 분석"], horizontal=True)
 
 # ------------------ 페이지별 처리 ------------------
 if page == "호텔 정보":
@@ -145,12 +144,10 @@ if page == "호텔 정보":
 **주변 관광지 수:** {hotel_info['tourist_count']}
 """)
     
-    # 관광지 타입별 수
     type_counts = tourist_df.groupby("type_name").size().reset_index(name="개수")
     type_counts = type_counts.rename(columns={"type_name":"관광지 타입"})
     st.table(type_counts)
     
-    # 호텔 이미지
     st.markdown("### 📷 호텔 이미지")
     images = get_hotel_images(api_key, hotel_info.get("contentid", ""))
     if images:
@@ -158,8 +155,7 @@ if page == "호텔 정보":
     else:
         st.write("이미지 없음")
         
-    # 주변 관광지 Top5
-    st.markdown("### 주변 관광지 Top 5")
+    st.markdown("### 주변 가장 가까운 관광지 Top 5")
     tourist_df_filtered = tourist_df[tourist_df["type"] != 80]
     tourist_df_filtered["dist"] = np.sqrt(
         (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
@@ -169,7 +165,6 @@ if page == "호텔 정보":
     for _, row in top5.iterrows():
         st.write(f"- **{row['name']}** ({row['type_name']})")
     
-    # 예약 링크
     booking_url = f"https://www.booking.com/searchresults.ko.html?ss={hotel_info['name'].replace(' ','+')}"
     st.markdown(f"""
 <div style="
@@ -186,9 +181,6 @@ if page == "호텔 정보":
 
 elif page == "관광지 보기":
     st.subheader(f"📍 {selected_region} 호텔 주변 관광지 보기")
-    
-    # --------- 관광지 선택 ---------
-    st.markdown("### 관광지 선택")
     category_list = ["선택 안 함"] + tourist_df["type_name"].unique().tolist()
     selected_category = st.selectbox("관광지 분류 선택", category_list)
     selected_spot = None
@@ -199,79 +191,41 @@ elif page == "관광지 보기":
         if selected_name != "선택 안 함":
             selected_spot = filtered[filtered["name"] == selected_name].iloc[0]
 
-    # --------- 지도 + 범례 컬럼 배치 ---------
-    col1, col2 = st.columns([3, 1])  # 지도 넓게, 범례 좁게
-
+    col1, col2 = st.columns([3, 1])
     with col1:
-        # 지도 생성
         m = folium.Map(location=[hotel_info["lat"], hotel_info["lng"]], zoom_start=15)
-
-        # 호텔 마커
-        folium.Marker(
-            location=[hotel_info['lat'], hotel_info['lng']],
-            popup=f"{hotel_info['name']}",
-            icon=folium.Icon(color='red', icon='hotel', prefix='fa')
-        ).add_to(m)
-
-        # 관광지 마커
+        folium.Marker(location=[hotel_info['lat'], hotel_info['lng']],
+                      popup=f"{hotel_info['name']}",
+                      icon=folium.Icon(color='red', icon='hotel', prefix='fa')).add_to(m)
         for _, row in tourist_df.iterrows():
             highlight = selected_spot is not None and row["name"] == selected_spot["name"]
             icon_name = TYPE_ICONS.get(row["type"], "info-sign")
             if highlight:
-                icon = BeautifyIcon(
-                    icon="star", icon_shape="marker",
-                    border_color="yellow", text_color="white", background_color="yellow",
-                    prefix="fa", icon_size=[30,30]
-                )
+                icon = BeautifyIcon(icon="star", icon_shape="marker",
+                                    border_color="yellow", text_color="white", background_color="yellow",
+                                    prefix="fa", icon_size=[30,30])
             else:
-                icon = BeautifyIcon(
-                    icon=icon_name, icon_shape="circle",
-                    border_color=row["color"], text_color="white", background_color=row["color"],
-                    prefix="fa", icon_size=[20,20]
-                )
-            folium.Marker(
-                location=[row["lat"], row["lng"]],
-                popup=f"{row['name']} ({row['type_name']})",
-                icon=icon
-            ).add_to(m)
-
-        # 선택한 관광지 강조
+                icon = BeautifyIcon(icon=icon_name, icon_shape="circle",
+                                    border_color=row["color"], text_color="white", background_color=row["color"],
+                                    prefix="fa", icon_size=[20,20])
+            folium.Marker(location=[row["lat"], row["lng"]],
+                          popup=f"{row['name']} ({row['type_name']})",
+                          icon=icon).add_to(m)
         if selected_spot is not None:
             m.location = [selected_spot["lat"], selected_spot["lng"]]
             m.zoom_start = 17
-
-        # 지도 출력
         st_folium(m, width=700, height=550)
 
     with col2:
-        # --------- 범례 ---------
-        legend_html = """
-        <div style="
-            background-color: white;
-            border:2px solid grey;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
-            font-size: 16px;
-        ">
-        <b>[관광지 범례]</b><br>
-        """
-    
-        # 관광지 타입별 아이콘 + 색상
+        legend_html = "<div style='background-color:white;border:2px solid grey;padding:10px;border-radius:5px;box-shadow:3px 3px 6px rgba(0,0,0,0.3);font-size:16px;'><b>[관광지 범례]</b><br>"
         for t_type, color in TYPE_COLORS.items():
             icon = TYPE_ICONS.get(t_type, "info-sign")
             name = TYPE_NAMES.get(t_type, "")
             legend_html += f'<i class="fa fa-{icon}" style="color:{color}; margin-right:5px;"></i> {name} <br>'
-    
-        # 선택 관광지 / 호텔
         legend_html += '<i class="fa fa-star" style="color:yellow; margin-right:5px;"></i> 선택 관광지<br>'
-        legend_html += '<i class="fa fa-hotel" style="color:red; margin-right:5px;"></i> 호텔<br>'
-    
-        legend_html += "</div>"
-    
+        legend_html += '<i class="fa fa-hotel" style="color:red; margin-right:5px;"></i> 호텔<br></div>'
         st.markdown(legend_html, unsafe_allow_html=True)
 
-    # ---------------- 관광지 목록 ----------------
     st.markdown("### 관광지 목록")
     if not tourist_df.empty:
         df_list = []
@@ -282,41 +236,26 @@ elif page == "관광지 보기":
                 lambda x: f'<a href="https://www.google.com/maps/search/{x["name"].replace(" ","+")}" target="_blank">지도 보기</a>', axis=1
             )
             df_list.append(temp[["관광지 타입","name","구글 지도"]])
-        final_df = pd.concat(df_list, ignore_index=True)
-        final_df = final_df.rename(columns={"name":"관광지명"})
-        st.write(
-            final_df.to_html(
-                index=False, 
-                escape=False,
-                justify="center"
-            ).replace("<th>", "<th style='text-align:center'>"),
-            unsafe_allow_html=True
-        )
+        final_df = pd.concat(df_list, ignore_index=True).rename(columns={"name":"관광지명"})
+        st.write(final_df.to_html(index=False, escape=False, justify="center").replace("<th>", "<th style='text-align:center'>"), unsafe_allow_html=True)
     else:
         st.write("주변 관광지 데이터가 없습니다.")
 
 elif page == "호텔 비교 분석":
     st.subheader(f"📊 {selected_region} 선택 호텔 비교")
-    
     selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
-    
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
 **평점:** ⭐ {selected_hotel_row['rating']}  
 **주변 관광지 수:** {selected_hotel_row['tourist_count']}
 """)
-    
-    # 지역별 평균 계산
     avg_rating = hotels_df["rating"].mean()
     avg_price = hotels_df["price"].mean()
     avg_tourist = hotels_df["tourist_count"].mean()
-    
-    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  주변 관광지 수: {avg_tourist:.1f}  가격: {avg_price:,.0f}원")
-    
-    # 시각화 (영문/숫자만, 선택 호텔 빨간선)
+    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  \n 주변 관광지 수: {avg_tourist:.1f}  \n 가격: {avg_price:,.0f}원")
+
     fig, axes = plt.subplots(1,3, figsize=(18,5))
-    
     sns.histplot(hotels_df["rating"], bins=10, kde=True, ax=axes[0], color='skyblue')
     axes[0].axvline(selected_hotel_row["rating"], color='red', linestyle='--')
     axes[0].set_title("Rating Distribution")
