@@ -39,6 +39,7 @@ selected_region = st.sidebar.selectbox("지역 선택", list(region_map.keys()))
 area_code = region_map[selected_region]
 
 # ------------------ 호텔 데이터 ------------------
+@st.cache_data(ttl=3600)
 def get_hotels(api_key, area_code):
     url = "http://apis.data.go.kr/B551011/EngService2/searchStay2"
     params = {"ServiceKey": api_key, "numOfRows": 50, "pageNo": 1,
@@ -58,7 +59,7 @@ def get_hotels(api_key, area_code):
 
 hotels_df = get_hotels(api_key, area_code)
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].squeeze()  # KeyError 예방
 
 # ------------------ 관광지 API ------------------
 def get_tourist_list(api_key, lat, lng, radius_m):
@@ -82,18 +83,14 @@ def get_tourist_list(api_key, lat, lng, radius_m):
     except:
         return []
 
-# ------------------ 호텔별 관광지 수 계산 (병렬, 캐시 없음) ------------------
-def get_tourist_count(lat, lng, radius_m):
-    try:
-        return len(get_tourist_list(api_key, lat, lng, radius_m))
-    except:
-        return 0
+# ------------------ 호텔별 관광지 수 계산 (병렬, 캐시 없이) ------------------
+def get_tourist_count(lat, lng):
+    return len(get_tourist_list(api_key, lat, lng, radius_m))
 
-def calculate_tourist_counts(hotels_df, radius_m):
+def calculate_tourist_counts(hotels_df):
     counts = [0]*len(hotels_df)
     with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_idx = {executor.submit(get_tourist_count, row["lat"], row["lng"], radius_m): idx
-                         for idx, row in hotels_df.iterrows()}
+        future_to_idx = {executor.submit(get_tourist_count, row["lat"], row["lng"]): idx for idx, row in hotels_df.iterrows()}
         for future in as_completed(future_to_idx):
             idx = future_to_idx[future]
             try:
@@ -102,7 +99,7 @@ def calculate_tourist_counts(hotels_df, radius_m):
                 counts[idx] = 0
     return counts
 
-hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df, radius_m)
+hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
 
 # ------------------ 선택 호텔 주변 관광지 데이터 ------------------
 tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
@@ -243,7 +240,7 @@ elif page == "관광지 보기":
 
 elif page == "호텔 비교 분석":
     st.subheader(f"📊 {selected_region} 선택 호텔 비교")
-    selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
+    selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].squeeze()
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
