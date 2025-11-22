@@ -9,7 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # ---------- 한글 폰트 설정 ----------
-plt.rcParams['font.family'] = 'Malgun Gothic'
+plt.rcParams['font.family'] = 'Malgun Gothic'   # Windows
 plt.rcParams['axes.unicode_minus'] = False
 sns.set(font='Malgun Gothic', rc={'axes.unicode_minus':False})
 
@@ -22,39 +22,31 @@ st.markdown("""
 api_key = "f0e46463ccf90abd0defd9c79c8568e922e07a835961b1676cdb2065ecc23494"
 radius_m = st.slider("관광지 반경 (m)", 500, 2000, 1000, step=100)
 
-# ------------------ 지역 선택 ------------------
-region_map = {"서울": 1, "부산": 6, "제주": 39}
-selected_region_name = st.sidebar.selectbox("지역 선택", list(region_map.keys()))
-area_code = region_map[selected_region_name]
-
-# ------------------ 시/구 코드 매핑 ------------------
-SIGUNGU_MAP = {
-    # 서울
-    1: "종로구", 2: "중구", 3: "용산구", 4: "성동구", 5: "광진구",
-    6: "동대문구", 7: "중랑구", 8: "성북구", 9: "강북구", 10: "도봉구",
-    11: "노원구", 12: "은평구", 13: "서대문구", 14: "마포구", 15: "양천구",
-    16: "강서구", 17: "구로구", 18: "금천구", 19: "영등포구", 20: "동작구",
-    21: "관악구", 22: "서초구", 23: "강남구", 24: "송파구", 25: "강동구",
-    # 부산
-    6: "중구", 7: "서구", 8: "동구", 9: "영도구", 10: "부산진구",
-    11: "동래구", 12: "남구", 13: "북구", 14: "해운대구", 15: "사하구",
-    16: "금정구", 17: "강서구", 18: "연제구", 19: "수영구", 20: "사상구",
-    21: "기장군",
-    # 제주
-    31: "제주시", 32: "서귀포시"
+# ------------------ 타입 정의 ------------------
+TYPE_COLORS = {
+    75: "#32CD32", 76: "#1E90FF", 77: "#00CED1", 78: "#9370DB",
+    79: "#FFB347", 80: "#A9A9A9", 82: "#FF69B4", 85: "#4682B4"
 }
 
-# ------------------ 타입 정의 ------------------
-TYPE_COLORS = {75:"#32CD32", 76:"#1E90FF", 77:"#00CED1", 78:"#9370DB",
-               79:"#FFB347", 80:"#A9A9A9", 82:"#FF69B4", 85:"#4682B4"}
-TYPE_NAMES = {75:"레포츠", 76:"관광지", 77:"교통", 78:"문화시설",
-              79:"쇼핑", 80:"다른 숙박지", 82:"음식점", 85:"축제/공연/행사"}
-TYPE_ICONS = {75:"fire", 76:"flag", 77:"plane", 78:"camera",
-              79:"shopping-cart", 80:"home", 82:"cutlery", 85:"music"}
+TYPE_NAMES = {75: "레포츠", 76: "관광지", 77: "교통", 78: "문화시설",
+              79: "쇼핑", 80: "다른 숙박지", 82: "음식점", 85: "축제/공연/행사"}
+
+TYPE_ICONS = {75: "fire", 76: "flag", 77: "plane", 78: "camera",
+              79: "shopping-cart", 80: "home", 82: "cutlery", 85: "music"}
+
+# ------------------ 지역 선택 ------------------
+region_map = {
+    "서울": 1,
+    "부산": 6,
+    "제주": 39
+}
+
+selected_region = st.sidebar.selectbox("지역 선택", list(region_map.keys()))
+area_code = region_map[selected_region]
 
 # ------------------ 호텔 데이터 ------------------
 @st.cache_data(ttl=3600)
-def get_hotels(api_key, area_code, area_name):
+def get_hotels(api_key, area_code):
     url = "http://apis.data.go.kr/B551011/EngService2/searchStay2"
     params = {"ServiceKey": api_key, "numOfRows": 50, "pageNo": 1,
               "MobileOS": "ETC", "MobileApp": "hotel_analysis",
@@ -63,25 +55,16 @@ def get_hotels(api_key, area_code, area_name):
     data = res.json()
     items = data['response']['body']['items']['item']
     df = pd.DataFrame(items)
-    df = df.rename(columns={"title": "name", "mapy":"lat", "mapx":"lng"})
+    df = df.rename(columns={"title": "name", "mapy": "lat", "mapx": "lng"})
     df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
     df["lng"] = pd.to_numeric(df["lng"], errors="coerce")
     df = df.dropna(subset=["lat","lng"])
     df["price"] = np.random.randint(150000, 300000, size=len(df))
     df["rating"] = np.random.uniform(3.0,5.0, size=len(df)).round(1)
-    df["tourist_count"] = np.random.randint(5,20,size=len(df))
-    df["area"] = area_name
+    df["tourist_count"] = np.random.randint(5, 20, size=len(df))
     return df
 
-# 1) 서울/부산/제주 모든 호텔 데이터 합치기
-hotels_df_all = pd.concat([
-    get_hotels(api_key, region_map["서울"], "서울"),
-    get_hotels(api_key, region_map["부산"], "부산"),
-    get_hotels(api_key, region_map["제주"], "제주")
-], ignore_index=True)
-
-# 2) 선택 지역 호텔만 필터링
-hotels_df = hotels_df_all[hotels_df_all["area"]==selected_region_name]
+hotels_df = get_hotels(api_key, area_code)
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
 hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
@@ -89,7 +72,7 @@ hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 @st.cache_data(ttl=3600)
 def get_tourist_list(api_key, lat, lng, radius_m):
     url = "http://apis.data.go.kr/B551011/EngService2/locationBasedList2"
-    params = {"ServiceKey": api_key, "numOfRows":200, "pageNo":1,
+    params = {"ServiceKey": api_key, "numOfRows": 200, "pageNo":1,
               "MobileOS":"ETC","MobileApp":"hotel_analysis",
               "mapX":lng,"mapY":lat,"radius":radius_m,"arrange":"A","_type":"json"}
     try:
@@ -97,11 +80,13 @@ def get_tourist_list(api_key, lat, lng, radius_m):
         data = res.json()
         items = data["response"]["body"]["items"]["item"]
         results = []
-        for t in items if isinstance(items,list) else [items]:
-            results.append({"name":t.get("title",""),
-                            "lat":float(t.get("mapy",0)),
-                            "lng":float(t.get("mapx",0)),
-                            "type":int(t.get("contenttypeid",0))})
+        for t in items if isinstance(items, list) else [items]:
+            results.append({
+                "name": t.get("title",""),
+                "lat": float(t.get("mapy",0)),
+                "lng": float(t.get("mapx",0)),
+                "type": int(t.get("contenttypeid",0)),
+            })
         return results
     except:
         return []
@@ -112,132 +97,139 @@ tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
 tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
 # ------------------ 페이지 선택 ------------------
-page = st.radio("페이지 선택", ["호텔 정보","관광지 보기","호텔 비교 분석"], horizontal=True)
+page = st.radio(
+    "페이지 선택",
+    ["호텔 정보", "관광지 보기", "호텔 비교 분석"],
+    horizontal=True
+)
 
 # ------------------ 호텔 이미지 ------------------
 def get_hotel_images(api_key, content_id):
     url = "http://apis.data.go.kr/B551011/EngService2/detailImage2"
-    params = {"ServiceKey": api_key, "MobileOS":"ETC",
-              "MobileApp":"hotel_app", "contentId": content_id,
-              "imageYN":"Y","_type":"json"}
+    params = {
+        "ServiceKey": api_key,
+        "MobileOS": "ETC",
+        "MobileApp": "hotel_app",
+        "contentId": content_id,
+        "imageYN": "Y",
+        "_type": "json"
+    }
     try:
         res = requests.get(url, params=params)
         data = res.json()
         items = data["response"]["body"]["items"]["item"]
-        if isinstance(items, dict): return [items.get("originimgurl")]
+        if isinstance(items, dict):
+            return [items.get("originimgurl")]
         return [i.get("originimgurl") for i in items if i.get("originimgurl")]
     except:
         return []
 
-# ================== 호텔 정보 페이지 ==================
-if page=="호텔 정보":
-    st.subheader("🏨 선택 호텔 정보")
-    sigungucode = hotel_info.get("sigungucode")
-    sigunguname = SIGUNGU_MAP.get(int(sigungucode), "정보 없음") if sigungucode else "정보 없음"
+# ------------------ 페이지별 처리 ------------------
+if page == "호텔 정보":
+    st.subheader(f"🏨 {selected_region} 선택 호텔 정보")
     st.markdown(f"""
 **호텔명:** {hotel_info['name']}  
-**지역:** {sigunguname}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
+**주변 관광지 수:** {hotel_info['tourist_count']}
 """)
-    st.markdown("### 관광지 타입별 수")
-    type_counts = tourist_df.groupby("type_name").size().reset_index(name="개수").rename(columns={"type_name":"관광지 타입"})
+    
+    # 관광지 타입별 수
+    type_counts = tourist_df.groupby("type_name").size().reset_index(name="개수")
+    type_counts = type_counts.rename(columns={"type_name":"관광지 타입"})
     st.table(type_counts)
-
+    
+    # 호텔 이미지
     st.markdown("### 📷 호텔 이미지")
-    images = get_hotel_images(api_key, hotel_info["contentid"])
-    if images: st.image(images, width=300)
-    else: st.write("이미지 없음")
-
+    images = get_hotel_images(api_key, hotel_info.get("contentid", ""))
+    if images:
+        st.image(images, width=300)
+    else:
+        st.write("이미지 없음")
+        
+    # 주변 관광지 Top5
     st.markdown("### 주변 관광지 Top 5")
-    tourist_df_filtered = tourist_df[tourist_df["type"]!=80]
-    tourist_df_filtered["dist"] = np.sqrt((tourist_df_filtered["lat"]-hotel_info["lat"])**2 + (tourist_df_filtered["lng"]-hotel_info["lng"])**2)
+    tourist_df_filtered = tourist_df[tourist_df["type"] != 80]
+    tourist_df_filtered["dist"] = np.sqrt(
+        (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
+        (tourist_df_filtered["lng"] - hotel_info["lng"])**2
+    )
     top5 = tourist_df_filtered.sort_values("dist").head(5)
-    for _, row in top5.iterrows(): st.write(f"- **{row['name']}** ({row['type_name']})")
-
+    for _, row in top5.iterrows():
+        st.write(f"- **{row['name']}** ({row['type_name']})")
+    
+    # 예약 링크
     booking_url = f"https://www.booking.com/searchresults.ko.html?ss={hotel_info['name'].replace(' ','+')}"
     st.markdown(f"""
-<div style="padding:15px;border:2px solid #d3d3d3;background-color:#f0f0f0;border-radius:10px;text-align:center;font-size:18px;font-weight:bold;">
-<a href="{booking_url}" target="_blank">👉 '{hotel_info['name']}' 예약하러 가기</a>
+<div style="
+    padding: 15px; 
+    border: 2px solid #d3d3d3; 
+    background-color: #f0f0f0; 
+    border-radius: 10px; 
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;">
+    <a href="{booking_url}" target="_blank">👉 '{hotel_info['name']}' 예약하러 가기</a>
 </div>
 """, unsafe_allow_html=True)
 
-# ================== 관광지 보기 페이지 ==================
-elif page=="관광지 보기":
-    st.subheader("📍 호텔 주변 관광지 보기")
-    st.markdown("### 관광지 선택")
-    category_list = ["선택 안 함"] + tourist_df["type_name"].unique().tolist()
-    selected_category = st.selectbox("관광지 분류 선택", category_list)
-    selected_spot = None
-    if selected_category!="선택 안 함":
-        filtered = tourist_df[tourist_df["type_name"]==selected_category]
-        spot_list = ["선택 안 함"] + filtered["name"].tolist()
-        selected_name = st.selectbox(f"{selected_category} 내 관광지 선택", spot_list)
-        if selected_name!="선택 안 함": selected_spot = filtered[filtered["name"]==selected_name].iloc[0]
-
-    col1,col2 = st.columns([3,1])
-    with col1:
-        m = folium.Map(location=[hotel_info["lat"], hotel_info["lng"]], zoom_start=15)
-        folium.Marker([hotel_info['lat'], hotel_info['lng']], popup=f"{hotel_info['name']}",
-                      icon=folium.Icon(color='red', icon='hotel', prefix='fa')).add_to(m)
-        for _, row in tourist_df.iterrows():
-            highlight = selected_spot is not None and row["name"]==selected_spot["name"]
-            icon_name = TYPE_ICONS.get(row["type"],"info-sign")
-            if highlight: icon = BeautifyIcon(icon="star", icon_shape="marker", border_color="yellow", text_color="white", background_color="yellow", prefix="fa", icon_size=[30,30])
-            else: icon = BeautifyIcon(icon=icon_name, icon_shape="circle", border_color=row["color"], text_color="white", background_color=row["color"], prefix="fa", icon_size=[20,20])
-            folium.Marker([row["lat"], row["lng"]], popup=f"{row['name']} ({row['type_name']})", icon=icon).add_to(m)
-        if selected_spot is not None: m.location=[selected_spot["lat"],selected_spot["lng"]]; m.zoom_start=17
-        st_folium(m, width=700, height=550)
-
-    with col2:
-        legend_html = """<div style="background-color:white;border:2px solid grey;padding:10px;border-radius:5px;box-shadow:3px 3px 6px rgba(0,0,0,0.3);font-size:16px;"><b>[관광지 범례]</b><br>"""
-        for t_type,color in TYPE_COLORS.items():
-            icon = TYPE_ICONS.get(t_type,"info-sign")
-            name = TYPE_NAMES.get(t_type,"")
-            legend_html += f'<i class="fa fa-{icon}" style="color:{color}; margin-right:5px;"></i> {name} <br>'
-        legend_html += '<i class="fa fa-star" style="color:yellow;margin-right:5px;"></i> 선택 관광지<br>'
-        legend_html += '<i class="fa fa-hotel" style="color:red;margin-right:5px;"></i> 호텔<br></div>'
-        st.markdown(legend_html, unsafe_allow_html=True)
-
-    st.markdown("### 관광지 목록")
-    if not tourist_df.empty:
-        df_list = []
-        for t_type, group in tourist_df.groupby("type_name"):
-            temp = group[["name","lat","lng"]].copy()
-            temp["관광지 타입"]=t_type
-            temp["구글 지도"]=temp.apply(lambda x:f'<a href="https://www.google.com/maps/search/{x["name"].replace(" ","+")}" target="_blank">지도 보기</a>', axis=1)
-            df_list.append(temp[["관광지 타입","name","구글 지도"]])
-        final_df = pd.concat(df_list, ignore_index=True).rename(columns={"name":"관광지명"})
-        st.write(final_df.to_html(index=False, escape=False, justify="center").replace("<th>","<th style='text-align:center'>"), unsafe_allow_html=True)
-    else: st.write("주변 관광지 데이터가 없습니다.")
-
-# ================== 호텔 비교 분석 페이지 ==================
-elif page=="호텔 비교 분석":
-    st.subheader("📊 선택 호텔과 전체 호텔 비교")
-    selected_hotel_row = hotels_df_all[hotels_df_all["name"]==selected_hotel].iloc[0]
-
+elif page == "관광지 보기":
+    st.subheader(f"📍 {selected_region} 호텔 주변 관광지 보기")
+    
+    # 지도
+    m = folium.Map(location=[hotel_info["lat"], hotel_info["lng"]], zoom_start=15)
+    folium.Marker(
+        location=[hotel_info['lat'], hotel_info['lng']],
+        popup=f"{hotel_info['name']}",
+        icon=folium.Icon(color='red', icon='hotel', prefix='fa')
+    ).add_to(m)
+    
+    for _, row in tourist_df.iterrows():
+        icon = BeautifyIcon(
+            icon=TYPE_ICONS.get(row["type"], "info-sign"), icon_shape="circle",
+            border_color=row["color"], text_color="white", background_color=row["color"],
+            prefix="fa", icon_size=[20,20]
+        )
+        folium.Marker(
+            location=[row["lat"], row["lng"]],
+            popup=f"{row['name']} ({row['type_name']})",
+            icon=icon
+        ).add_to(m)
+    
+    st_folium(m, width=700, height=550)
+    
+elif page == "호텔 비교 분석":
+    st.subheader(f"📊 {selected_region} 선택 호텔 비교")
+    
+    selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
+    
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
-**지역:** {selected_hotel_row['area']}  
 **가격:** {selected_hotel_row['price']:,}원  
-**평점:** ⭐{selected_hotel_row['rating']}  
+**평점:** ⭐ {selected_hotel_row['rating']}  
 **주변 관광지 수:** {selected_hotel_row['tourist_count']}
 """)
-
+    
     # 지역별 평균 계산
-    st.markdown("### 지역별 평균 비교")
-    region_avg = hotels_df_all.groupby("area")[["rating","tourist_count","price"]].mean().round({"rating":2,"tourist_count":1,"price":0})
-    st.table(region_avg)
-
-    # 시각화
-    fig, axes = plt.subplots(1,3,figsize=(18,5))
-    sns.histplot(data=hotels_df_all, x="rating", hue="area", multiple="stack", palette="Set2", ax=axes[0])
+    avg_rating = hotels_df["rating"].mean()
+    avg_price = hotels_df["price"].mean()
+    avg_tourist = hotels_df["tourist_count"].mean()
+    
+    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  주변 관광지 수: {avg_tourist:.1f}  가격: {avg_price:,.0f}원")
+    
+    # 시각화 (영문/숫자만, 선택 호텔 빨간선)
+    fig, axes = plt.subplots(1,3, figsize=(18,5))
+    
+    sns.histplot(hotels_df["rating"], bins=10, kde=True, ax=axes[0], color='skyblue')
     axes[0].axvline(selected_hotel_row["rating"], color='red', linestyle='--')
     axes[0].set_title("Rating Distribution")
-    sns.histplot(data=hotels_df_all, x="tourist_count", hue="area", multiple="stack", palette="Set2", ax=axes[1])
+    
+    sns.histplot(hotels_df["tourist_count"], bins=10, kde=True, ax=axes[1], color='lightgreen')
     axes[1].axvline(selected_hotel_row["tourist_count"], color='red', linestyle='--')
     axes[1].set_title("Nearby Attractions Distribution")
-    sns.histplot(data=hotels_df_all, x="price", hue="area", multiple="stack", palette="Set2", ax=axes[2])
+    
+    sns.histplot(hotels_df["price"], bins=10, kde=True, ax=axes[2], color='lightcoral')
     axes[2].axvline(selected_hotel_row["price"], color='red', linestyle='--')
     axes[2].set_title("Price Distribution")
+    
     st.pyplot(fig)
