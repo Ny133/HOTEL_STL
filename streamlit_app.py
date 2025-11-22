@@ -59,7 +59,7 @@ def get_hotels(api_key, area_code):
 
 hotels_df = get_hotels(api_key, area_code)
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].squeeze()  # KeyError 예방
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
 # ------------------ 관광지 API ------------------
 def get_tourist_list(api_key, lat, lng, radius_m):
@@ -83,27 +83,35 @@ def get_tourist_list(api_key, lat, lng, radius_m):
     except:
         return []
 
-# ------------------ 호텔별 관광지 수 계산 (병렬, 캐시 없이) ------------------
+# ------------------ 호텔별 관광지 수 계산 (병렬) ------------------
 def get_tourist_count(lat, lng):
     return len(get_tourist_list(api_key, lat, lng, radius_m))
 
 def calculate_tourist_counts(hotels_df):
-    counts = [0]*len(hotels_df)
+    counts = []
     with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_idx = {executor.submit(get_tourist_count, row["lat"], row["lng"]): idx for idx, row in hotels_df.iterrows()}
-        for future in as_completed(future_to_idx):
-            idx = future_to_idx[future]
+        future_to_hotel = {executor.submit(get_tourist_count, row["lat"], row["lng"]): idx for idx, row in hotels_df.iterrows()}
+        for future in as_completed(future_to_hotel):
+            idx = future_to_hotel[future]
             try:
-                counts[idx] = future.result()
+                counts.append((idx, future.result()))
             except:
-                counts[idx] = 0
-    return counts
+                counts.append((idx, 0))
+    counts.sort(key=lambda x: x[0])
+    return [c[1] for c in counts]
 
 hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
 
 # ------------------ 선택 호텔 주변 관광지 데이터 ------------------
 tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
 tourist_df = pd.DataFrame(tourist_list)
+
+# 빈 DataFrame일 경우 컬럼 생성 (KeyError 방지)
+if tourist_df.empty:
+    tourist_df["type"] = pd.Series(dtype=int)
+    tourist_df["lat"] = pd.Series(dtype=float)
+    tourist_df["lng"] = pd.Series(dtype=float)
+
 tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
 tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
@@ -240,7 +248,7 @@ elif page == "관광지 보기":
 
 elif page == "호텔 비교 분석":
     st.subheader(f"📊 {selected_region} 선택 호텔 비교")
-    selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].squeeze()
+    selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
