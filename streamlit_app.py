@@ -319,3 +319,9 @@ elif page == "호텔 비교 분석":
     axes[2].set_title("Price Distribution")
     
     st.pyplot(fig)
+
+    if st.button("API 상태 확인"):
+    res = requests.get(url, params=params)
+    st.write("HTTP status code:", res.status_code)
+    st.write(res.json().get("response", {}).get("header", {}))
+
