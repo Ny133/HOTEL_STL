@@ -58,6 +58,8 @@ def get_hotels(api_key, area_code):
     return df
 
 hotels_df = get_hotels(api_key, area_code)
+selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
 # ------------------ 관광지 API ------------------
 @st.cache_data(ttl=3600)
@@ -83,14 +85,15 @@ def get_tourist_list(api_key, lat, lng, radius_m):
         return []
 
 # ------------------ 호텔별 관광지 수 계산 (병렬) ------------------
-def get_tourist_count(lat, lng):
+def get_tourist_count(lat, lng, radius_m):
     return len(get_tourist_list(api_key, lat, lng, radius_m))
 
 @st.cache_data(ttl=3600)
-def calculate_tourist_counts(hotels_df):
+def calculate_tourist_counts(hotels_df, radius_m):
     counts = []
     with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_hotel = {executor.submit(get_tourist_count, row["lat"], row["lng"]): idx for idx, row in hotels_df.iterrows()}
+        future_to_hotel = {executor.submit(get_tourist_count, row["lat"], row["lng"], radius_m): idx
+                           for idx, row in hotels_df.iterrows()}
         for future in as_completed(future_to_hotel):
             idx = future_to_hotel[future]
             try:
@@ -100,12 +103,8 @@ def calculate_tourist_counts(hotels_df):
     counts.sort(key=lambda x: x[0])
     return [c[1] for c in counts]
 
-# ------------------ tourist_count 계산 ------------------
-hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df)
-
-# ------------------ 호텔 선택 ------------------
-selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
+# ------------------ 관광지 수 계산 ------------------
+hotels_df["tourist_count"] = calculate_tourist_counts(hotels_df, radius_m)
 
 # ------------------ 선택 호텔 주변 관광지 데이터 ------------------
 tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
