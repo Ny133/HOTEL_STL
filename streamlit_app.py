@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -61,9 +62,14 @@ def get_hotels(api_key, area_code):
     df = df.dropna(subset=["lat","lng"])
     df["price"] = np.random.randint(150000, 300000, size=len(df))
     df["rating"] = np.random.uniform(3.0,5.0, size=len(df)).round(1)
+    df["tourist_count"] = np.random.randint(5, 20, size=len(df))
     return df
 
-# ------------------ 관광지 리스트 API ------------------
+hotels_df = get_hotels(api_key, area_code)
+selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
+hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
+
+# ------------------ 관광지 데이터 ------------------
 @st.cache_data(ttl=3600)
 def get_tourist_list(api_key, lat, lng, radius_m):
     url = "http://apis.data.go.kr/B551011/EngService2/locationBasedList2"
@@ -86,20 +92,10 @@ def get_tourist_list(api_key, lat, lng, radius_m):
     except:
         return []
 
-# ------------------ 관광지 수 계산 (API 기반) ------------------
-@st.cache_data(ttl=3600)
-def get_tourist_count(lat, lng, radius_m):
-    tourist_list = get_tourist_list(api_key, lat, lng, radius_m)
-    return len(tourist_list)
-
-# ------------------ 호텔 데이터 가져오기 + 관광지 수 계산 ------------------
-hotels_df = get_hotels(api_key, area_code)
-hotels_df["tourist_count"] = hotels_df.apply(
-    lambda x: get_tourist_count(x["lat"], x["lng"], radius_m), axis=1
-)
-
-selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
-hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
+tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
+tourist_df = pd.DataFrame(tourist_list)
+tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
+tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
 # ------------------ 페이지 선택 ------------------
 page = st.radio(
@@ -128,12 +124,6 @@ def get_hotel_images(api_key, content_id):
         return [i.get("originimgurl") for i in items if i.get("originimgurl")]
     except:
         return []
-
-# ------------------ 관광지 데이터 ------------------
-tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
-tourist_df = pd.DataFrame(tourist_list)
-tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
-tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
 # ------------------ 페이지별 처리 ------------------
 if page == "호텔 정보":
@@ -312,7 +302,7 @@ elif page == "호텔 비교 분석":
     avg_price = hotels_df["price"].mean()
     avg_tourist = hotels_df["tourist_count"].mean()
     
-    st.markdown(f"**{selected_region} 호텔 평균**  \n 평점: {avg_rating:.2f}  \n 주변 관광지 수: {avg_tourist:.1f}  \n 가격: {avg_price:,.0f}원")
+    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  주변 관광지 수: {avg_tourist:.1f}  가격: {avg_price:,.0f}원")
     
     # 시각화 (영문/숫자만, 선택 호텔 빨간선)
     fig, axes = plt.subplots(1,3, figsize=(18,5))
