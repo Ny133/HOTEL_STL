@@ -67,6 +67,30 @@ hotels_df = get_hotels(api_key, area_code)
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
 hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
+# ------------------ 관광지 수 계산 데이터 ------------------
+# 🔥 전체 호텔 관광지 수 계산 (최적화)
+import time
+
+@st.cache_data(ttl=3600)
+def compute_tourist_count_for_hotel(lat, lng, radius):
+    tourist_list = get_tourist_list(api_key, lat, lng, radius)
+    return len(tourist_list)
+
+# Progress bar
+with st.spinner("호텔별 주변 관광지 수 계산 중... (1회만 계산, 이후 캐시됨)"):
+    progress = st.progress(0)
+    total = len(hotels_df)
+
+    tourist_counts = []
+    for i, row in hotels_df.iterrows():
+        count = compute_tourist_count_for_hotel(row["lat"], row["lng"], radius_m)
+        tourist_counts.append(count)
+
+        progress.progress((i + 1) / total)
+        # 딜레이 제거 (필요하면 time.sleep(0.05) 넣어서 자연스럽게 보이게 가능)
+
+hotels_df["tourist_count"] = tourist_counts
+
 # ------------------ 관광지 데이터 ------------------
 @st.cache_data(ttl=3600)
 def get_tourist_list(api_key, lat, lng, radius_m):
@@ -127,13 +151,13 @@ def get_hotel_images(api_key, content_id):
 if page == "호텔 정보":
     st.subheader(f"🏨 {selected_region} 선택 호텔 정보")
     
-    tourist_count = len(tourist_df)
+    sel_tourist_count = len(tourist_df)
     
     st.markdown(f"""
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수:** {tourist_count}
+**주변 관광지 수:** {sel_tourist_count}
 """)
     
     # 관광지 타입별 수
@@ -291,12 +315,12 @@ elif page == "호텔 비교 분석":
     st.subheader(f"📊 {selected_region} 선택 호텔 비교")
     
     selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
-    tourist_count = len(tourist_df)
+    sel_tourist_count = len(tourist_df)
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
 **평점:** ⭐ {selected_hotel_row['rating']}  
-**주변 관광지 수:** {tourist_count}
+**주변 관광지 수:** {sel_tourist_count}
 """)
     
     # 지역별 평균 계산
