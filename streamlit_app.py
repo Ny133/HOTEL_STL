@@ -336,7 +336,7 @@ elif page == "호텔 비교 분석":
     avg_price = hotels_df["price"].mean()
     avg_tourist = hotels_df["tourist_count"].mean()
     
-    st.markdown(f"**{selected_region} 호텔 평균**  \n평점: {avg_rating:.2f}  \n주변 관광지 수 (1km): {avg_tourist:.1f} \n가격: {avg_price:,.0f}원")
+    st.markdown(f"**{selected_region} 호텔 평균**  \n평점: {avg_rating:.2f}  \n주변 관광지 수 (1km): {avg_tourist:.1f}  \n가격: {avg_price:,.0f}원")
     
     # 시각화 (영문/숫자만, 선택 호텔 빨간선)
     fig, axes = plt.subplots(1,3, figsize=(18,5))
