@@ -92,7 +92,7 @@ def get_tourist_list(api_key, lat, lng, radius_m):
     except:
         return []
 
-tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], radius_m)
+tourist_list = get_tourist_list(api_key, hotel_info["lat"], hotel_info["lng"], RADIUS_METER)
 tourist_df = pd.DataFrame(tourist_list)
 tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
 tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
