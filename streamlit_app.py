@@ -353,5 +353,11 @@ elif page == "호텔 비교 분석":
     sns.histplot(hotels_df["price"], bins=10, kde=True, ax=axes[2], color='lightcoral')
     axes[2].axvline(selected_hotel_row["price"], color='red', linestyle='--')
     axes[2].set_title("Price Distribution")
+    # 🔥 x축 tick 5개로 제한
+    min_val = hotels_df["price"].min()
+    max_val = hotels_df["price"].max()
+    ticks = np.linspace(min_val, max_val, 5)  # 5개 구간으로 나누기
+    axes[2].set_xticks(ticks)
+
     
     st.pyplot(fig)
