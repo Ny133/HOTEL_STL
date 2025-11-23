@@ -362,7 +362,7 @@ elif page == "호텔 비교 분석":
     rounded_min = int(np.floor(min_val / 10000) * 10000)
     rounded_max = int(np.ceil(max_val / 10000) * 10000)
     # 2) 5개 구간 = tick 6개 생성
-    ticks = np.linspace(rounded_min, rounded_max, 6)
+    ticks = np.linspace(rounded_min, rounded_max, 5)
     # 적용
     axes[2].set_xticks(ticks)
     # 3) 천 단위 콤마 표시 → 숫자 가독성 향상
