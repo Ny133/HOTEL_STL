@@ -114,7 +114,7 @@ def compute_tourist_count_for_hotel(lat, lng, radius):
     return len(tourist_list)
 
 # Progress bar
-with st.spinner("호텔별 주변 관광지 수 계산 중... (1회만 계산, 이후 캐시됨)"):
+with st.spinner("로딩 중..."):
     progress = st.progress(0)
     total = len(hotels_df)
 
