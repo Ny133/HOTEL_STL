@@ -257,13 +257,13 @@ elif page == "관광지 보기":
                 icon = BeautifyIcon(
                     icon="star", icon_shape="marker",
                     border_color="yellow", text_color="white", background_color="yellow",
-                    prefix="fa", icon_size=[30,30]
+                    prefix="fa", icon_size=[40,40]
                 )
             else:
                 icon = BeautifyIcon(
                     icon=icon_name, icon_shape="circle",
                     border_color="white", text_color="white", background_color=row["color"],
-                    prefix="fa", icon_size=[20,20]
+                    prefix="fa", icon_size=[30,30]
                 )
             folium.Marker(
                 location=[row["lat"], row["lng"]],
