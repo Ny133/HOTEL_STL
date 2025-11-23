@@ -82,12 +82,19 @@ def get_tourist_list(api_key, lat, lng, radius_m):
         items = data["response"]["body"]["items"]["item"]
         results = []
         for t in items if isinstance(items, list) else [items]:
+            t_type = int(t.get("contenttypeid", 0))
+            
+            # 타입이 없는 경우 제외
+            if t_type not in TYPE_NAMES:
+                continue
+        
             results.append({
                 "name": t.get("title",""),
                 "lat": float(t.get("mapy",0)),
                 "lng": float(t.get("mapx",0)),
-                "type": int(t.get("contenttypeid",0)),
+                "type": t_type,
             })
+
         return results
     except:
         return []
