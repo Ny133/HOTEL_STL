@@ -14,7 +14,7 @@ plt.rcParams['axes.unicode_minus'] = False
 sns.set(font='Malgun Gothic', rc={'axes.unicode_minus':False})
 
 st.set_page_config(layout="wide")
-st.title("🏨 호텔 + 주변 관광지 시각화")
+st.title("🏨 호텔 + 주변 관광지 대시보드")
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 """, unsafe_allow_html=True)
