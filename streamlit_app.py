@@ -20,7 +20,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 api_key = "f0e46463ccf90abd0defd9c79c8568e922e07a835961b1676cdb2065ecc23494"
-radius_m = st.slider("관광지 반경 (m)", 500, 2000, 1000, step=100)
+RADIUS_METER = 1000   # 관광지 반경(m) 고정
+radius = RADIUS_METER
 
 # ------------------ 타입 정의 ------------------
 TYPE_COLORS = {
@@ -157,7 +158,7 @@ if page == "호텔 정보":
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수:** {sel_tourist_count}
+**주변 관광지 수(1km):** {sel_tourist_count}
 """)
     
     # 관광지 타입별 수
@@ -174,7 +175,7 @@ if page == "호텔 정보":
         st.write("이미지 없음")
         
     # 주변 관광지 Top5
-    st.markdown("### 주변 관광지 Top 5")
+    st.markdown("### 주변 관광지 가까운 순순 Top 5")
     tourist_df_filtered = tourist_df[tourist_df["type"] != 80]
     tourist_df_filtered["dist"] = np.sqrt(
         (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
@@ -200,7 +201,7 @@ if page == "호텔 정보":
 """, unsafe_allow_html=True)
 
 elif page == "관광지 보기":
-    st.subheader(f"📍 {selected_region} 호텔 주변 관광지 보기")
+    st.subheader(f"📍 {selected_region} 호텔 주변 관광지 보기(반경 1km)")
     
     # --------- 관광지 선택 ---------
     st.markdown("### 관광지 선택")
@@ -287,7 +288,7 @@ elif page == "관광지 보기":
         st.markdown(legend_html, unsafe_allow_html=True)
 
     # ---------------- 관광지 목록 ----------------
-    st.markdown("### 관광지 목록")
+    st.markdown("### 관광지 목록 (반경 1km)")
     if not tourist_df.empty:
         df_list = []
         for t_type, group in tourist_df.groupby("type_name"):
@@ -320,7 +321,7 @@ elif page == "호텔 비교 분석":
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
 **평점:** ⭐ {selected_hotel_row['rating']}  
-**주변 관광지 수:** {sel_tourist_count}
+**주변 관광지 수 (1km):** {sel_tourist_count}
 """)
     
     # 지역별 평균 계산
@@ -328,7 +329,7 @@ elif page == "호텔 비교 분석":
     avg_price = hotels_df["price"].mean()
     avg_tourist = hotels_df["tourist_count"].mean()
     
-    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  주변 관광지 수: {avg_tourist:.1f}  가격: {avg_price:,.0f}원")
+    st.markdown(f"**{selected_region} 호텔 평균**  평점: {avg_rating:.2f}  주변 관광지 수 (1km): {avg_tourist:.1f}  가격: {avg_price:,.0f}원")
     
     # 시각화 (영문/숫자만, 선택 호텔 빨간선)
     fig, axes = plt.subplots(1,3, figsize=(18,5))
