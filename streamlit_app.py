@@ -61,7 +61,6 @@ def get_hotels(api_key, area_code):
     df = df.dropna(subset=["lat","lng"])
     df["price"] = np.random.randint(150000, 300000, size=len(df))
     df["rating"] = np.random.uniform(3.0,5.0, size=len(df)).round(1)
-    df["tourist_count"] = np.random.randint(5, 20, size=len(df))
     return df
 
 hotels_df = get_hotels(api_key, area_code)
@@ -127,11 +126,14 @@ def get_hotel_images(api_key, content_id):
 # ------------------ 페이지별 처리 ------------------
 if page == "호텔 정보":
     st.subheader(f"🏨 {selected_region} 선택 호텔 정보")
+    
+    tourist_count = len(tourist_df)
+    
     st.markdown(f"""
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수:** {hotel_info['tourist_count']}
+**주변 관광지 수:** {tourist_count}}
 """)
     
     # 관광지 타입별 수
