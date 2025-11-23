@@ -113,7 +113,7 @@ with st.spinner("호텔별 주변 관광지 수 계산 중... (1회만 계산, �
 
     tourist_counts = []
     for i, row in hotels_df.iterrows():
-        count = compute_tourist_count_for_hotel(row["lat"], row["lng"], radius_m)
+        count = compute_tourist_count_for_hotel(row["lat"], row["lng"], RADIUS_METER)
         tourist_counts.append(count)
 
         progress.progress((i + 1) / total)
