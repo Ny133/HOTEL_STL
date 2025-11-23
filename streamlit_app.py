@@ -227,7 +227,20 @@ elif page == "관광지 보기":
 
     with col1:
         # 지도 생성
-        m = folium.Map(location=[hotel_info["lat"], hotel_info["lng"]], zoom_start=15)
+        m = folium.Map(
+        location=[hotel_info["lat"], hotel_info["lng"]],
+        zoom_start=15,
+        tiles=None  # 기본 지도 없이 시작
+    )
+    
+    # CartoDB Voyager 타일 추가
+    folium.TileLayer(
+        tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        attr='&copy; <a href="https://www.carto.com/">CARTO</a>',
+        name='CartoDB Voyager',
+        subdomains='abcd',
+        max_zoom=19
+    ).add_to(m)
 
         # 호텔 마커
         folium.Marker(
