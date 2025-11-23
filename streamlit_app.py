@@ -165,7 +165,7 @@ if page == "호텔 정보":
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수(1km):** {sel_tourist_count}개개
+**주변 관광지 수(1km):** {sel_tourist_count}개
 """)
     
     # 관광지 타입별 수
