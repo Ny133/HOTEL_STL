@@ -348,7 +348,7 @@ elif page == "호텔 비교 분석":
     sns.histplot(hotels_df["tourist_count"], bins=10, kde=True, ax=axes[1], color='lightgreen')
     axes[1].axvline(selected_hotel_row["tourist_count"], color='red', linestyle='--')
     axes[1].set_title("Nearby Attractions Distribution")
-    axes[1].set_xlabel("Attraction Count") 
+    axes[1].set_xlabel("attraction count") 
     
     sns.histplot(hotels_df["price"], bins=10, kde=True, ax=axes[2], color='lightcoral')
     axes[2].axvline(selected_hotel_row["price"], color='red', linestyle='--')
