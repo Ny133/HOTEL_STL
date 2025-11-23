@@ -350,14 +350,24 @@ elif page == "호텔 비교 분석":
     axes[1].set_title("Nearby Attractions Distribution")
     axes[1].set_xlabel("attraction count") 
     
+    import numpy as np
+
     sns.histplot(hotels_df["price"], bins=10, kde=True, ax=axes[2], color='lightcoral')
     axes[2].axvline(selected_hotel_row["price"], color='red', linestyle='--')
     axes[2].set_title("Price Distribution")
-    # 🔥 x축 tick 5개로 제한
+    # ---- 🔥 깔끔한 5개 구간 tick 생성 ----
     min_val = hotels_df["price"].min()
     max_val = hotels_df["price"].max()
-    ticks = np.linspace(min_val, max_val, 5)  # 5개 구간으로 나누기
+    # 1) 가격을 10,000 단위로 반올림해서 깔끔하게 만들기
+    rounded_min = int(np.floor(min_val / 10000) * 10000)
+    rounded_max = int(np.ceil(max_val / 10000) * 10000)
+    # 2) 5개 구간 = tick 6개 생성
+    ticks = np.linspace(rounded_min, rounded_max, 6)
+    # 적용
     axes[2].set_xticks(ticks)
+    # 3) 천 단위 콤마 표시 → 숫자 가독성 향상
+    axes[2].set_xticklabels([f"{int(x):,}" for x in ticks])
+
 
     
     st.pyplot(fig)
