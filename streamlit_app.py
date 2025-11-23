@@ -165,7 +165,7 @@ if page == "호텔 정보":
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수(1km):** {sel_tourist_count}
+**주변 관광지 수(1km):** {sel_tourist_count}개개
 """)
     
     # 관광지 타입별 수
@@ -328,7 +328,7 @@ elif page == "호텔 비교 분석":
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
 **평점:** ⭐ {selected_hotel_row['rating']}  
-**주변 관광지 수 (1km):** {sel_tourist_count}
+**주변 관광지 수 (1km):** {sel_tourist_count}개
 """)
     
     # 지역별 평균 계산
@@ -336,7 +336,7 @@ elif page == "호텔 비교 분석":
     avg_price = hotels_df["price"].mean()
     avg_tourist = hotels_df["tourist_count"].mean()
     
-    st.markdown(f"**{selected_region} 호텔 평균**  \n평점: {avg_rating:.2f}  \n주변 관광지 수 (1km): {avg_tourist:.1f}  \n가격: {avg_price:,.0f}원")
+    st.markdown(f"**{selected_region} 호텔 평균**  \n평점: {avg_rating:.2f}  \n주변 관광지 수 (1km): {avg_tourist:.1f}개  \n가격: {avg_price:,.0f}원")
     
     # 시각화 (영문/숫자만, 선택 호텔 빨간선)
     fig, axes = plt.subplots(1,3, figsize=(18,5))
