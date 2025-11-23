@@ -182,7 +182,7 @@ if page == "호텔 정보":
         st.write("이미지 없음")
         
     # 주변 관광지 Top5
-    st.markdown("### 주변 관광지 가까운 순순 Top 5")
+    st.markdown("### 주변 관광지 가까운 순 Top 5")
     tourist_df_filtered = tourist_df[tourist_df["type"] != 80]
     tourist_df_filtered["dist"] = np.sqrt(
         (tourist_df_filtered["lat"] - hotel_info["lat"])**2 +
