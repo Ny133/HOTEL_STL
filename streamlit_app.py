@@ -240,7 +240,7 @@ elif page == "관광지 보기":
         name='CartoDB Voyager',
         subdomains='abcd',
         max_zoom=19
-    ).add_to(m)
+        ).add_to(m)
 
         # 호텔 마커
         folium.Marker(
