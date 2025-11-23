@@ -257,7 +257,7 @@ elif page == "관광지 보기":
                 icon = BeautifyIcon(
                     icon="star", icon_shape="marker",
                     border_color="yellow", text_color="white", background_color="yellow",
-                    prefix="fa", icon_size=[40,40]
+                    prefix="fa", icon_size=[35,35]
                 )
             else:
                 icon = BeautifyIcon(
