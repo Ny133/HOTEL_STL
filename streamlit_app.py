@@ -133,7 +133,7 @@ if page == "호텔 정보":
 **호텔명:** {hotel_info['name']}  
 **가격:** {hotel_info['price']:,}원  
 **평점:** ⭐ {hotel_info['rating']}  
-**주변 관광지 수:** {tourist_count}}
+**주변 관광지 수:** {tourist_count}
 """)
     
     # 관광지 타입별 수
