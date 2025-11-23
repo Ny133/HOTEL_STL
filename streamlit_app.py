@@ -291,12 +291,12 @@ elif page == "호텔 비교 분석":
     st.subheader(f"📊 {selected_region} 선택 호텔 비교")
     
     selected_hotel_row = hotels_df[hotels_df["name"] == selected_hotel].iloc[0]
-    
+    tourist_count = len(tourist_df)
     st.markdown(f"""
 **호텔:** {selected_hotel_row['name']}  
 **가격:** {selected_hotel_row['price']:,}원  
 **평점:** ⭐ {selected_hotel_row['rating']}  
-**주변 관광지 수:** {selected_hotel_row['tourist_count']}
+**주변 관광지 수:** {tourist_count}
 """)
     
     # 지역별 평균 계산
