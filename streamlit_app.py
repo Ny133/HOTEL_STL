@@ -67,29 +67,6 @@ hotels_df = get_hotels(api_key, area_code)
 selected_hotel = st.selectbox("호텔 선택", hotels_df["name"])
 hotel_info = hotels_df[hotels_df["name"]==selected_hotel].iloc[0]
 
-# ------------------ 관광지 수 계산 데이터 ------------------
-# 🔥 전체 호텔 관광지 수 계산 (최적화)
-import time
-
-@st.cache_data(ttl=3600)
-def compute_tourist_count_for_hotel(lat, lng, radius):
-    tourist_list = get_tourist_list(api_key, lat, lng, radius)
-    return len(tourist_list)
-
-# Progress bar
-with st.spinner("호텔별 주변 관광지 수 계산 중... (1회만 계산, 이후 캐시됨)"):
-    progress = st.progress(0)
-    total = len(hotels_df)
-
-    tourist_counts = []
-    for i, row in hotels_df.iterrows():
-        count = compute_tourist_count_for_hotel(row["lat"], row["lng"], radius_m)
-        tourist_counts.append(count)
-
-        progress.progress((i + 1) / total)
-        # 딜레이 제거 (필요하면 time.sleep(0.05) 넣어서 자연스럽게 보이게 가능)
-
-hotels_df["tourist_count"] = tourist_counts
 
 # ------------------ 관광지 데이터 ------------------
 @st.cache_data(ttl=3600)
@@ -119,6 +96,29 @@ tourist_df = pd.DataFrame(tourist_list)
 tourist_df["type_name"] = tourist_df["type"].map(TYPE_NAMES)
 tourist_df["color"] = tourist_df["type"].map(TYPE_COLORS)
 
+# ------------------ 관광지 수 계산 데이터 ------------------
+# 🔥 전체 호텔 관광지 수 계산 (최적화)
+import time
+
+@st.cache_data(ttl=3600)
+def compute_tourist_count_for_hotel(lat, lng, radius):
+    tourist_list = get_tourist_list(api_key, lat, lng, radius)
+    return len(tourist_list)
+
+# Progress bar
+with st.spinner("호텔별 주변 관광지 수 계산 중... (1회만 계산, 이후 캐시됨)"):
+    progress = st.progress(0)
+    total = len(hotels_df)
+
+    tourist_counts = []
+    for i, row in hotels_df.iterrows():
+        count = compute_tourist_count_for_hotel(row["lat"], row["lng"], radius_m)
+        tourist_counts.append(count)
+
+        progress.progress((i + 1) / total)
+        # 딜레이 제거 (필요하면 time.sleep(0.05) 넣어서 자연스럽게 보이게 가능)
+
+hotels_df["tourist_count"] = tourist_counts
 # ------------------ 페이지 선택 ------------------
 page = st.radio(
     "페이지 선택",
